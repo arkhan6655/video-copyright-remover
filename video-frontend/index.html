@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Copyright Remover</title>
+</head>
+<body>
+    <h2>Upload a Video</h2>
+    <input type="file" id="videoInput">
+    <button onclick="uploadVideo()">Remove Copyright</button>
+    <p id="status"></p>
+    <a id="downloadLink" style="display:none;" download>Download Processed Video</a>
+
+    <script>
+        async function uploadVideo() {
+            let fileInput = document.getElementById("videoInput");
+            let file = fileInput.files[0];
+
+            if (!file) {
+                alert("Please select a video file.");
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append("file", file);
+
+            document.getElementById("status").innerText = "Processing...";
+
+            let response = await fetch("https://video-copyright-remover.onrender.com/upload", {
+                method: "POST",
+                body: formData
+            });
+
+            if (response.ok) {
+                let blob = await response.blob();
+                let url = URL.createObjectURL(blob);
+                let downloadLink = document.getElementById("downloadLink");
+                downloadLink.href = url;
+                downloadLink.style.display = "block";
+                downloadLink.innerText = "Download Processed Video";
+                document.getElementById("status").innerText = "Processing complete!";
+            } else {
+                document.getElementById("status").innerText = "Error processing video.";
+            }
+        }
+    </script>
+</body>
+</html>

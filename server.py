@@ -1,38 +1,59 @@
-from flask import Flask, request, jsonify, send_file
 import os
-import subprocess
-import time
+from flask import Flask, request, jsonify
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# Set upload folder and allowed file extensions
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'mp4'}
 
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Check if the file extension is allowed
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# Home route
 @app.route('/')
 def home():
-    return "Welcome to Video Copyright Remover API!"
+    return 'Welcome to the Video Copyright Remover App!'
 
+# Favicon route to avoid 404 error
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204  # No Content to suppress the error
+
+# Upload route to handle POST request for video upload
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
-
-    file = request.files['file']
-    input_path = os.path.join(UPLOAD_FOLDER, file.filename)
-    output_path = os.path.join(UPLOAD_FOLDER, f"output_{time.strftime('%Y%m%d-%H%M%S')}.mp4")
-    file.save(input_path)
-
-    # FFmpeg Command to Process Video
-    command = [
-        "ffmpeg", "-i", input_path,
-        "-vf", "scale=in_w:in_h, eq=brightness=0.02:contrast=1.1",
-        "-c:v", "libx265", "-preset", "medium", "-crf", "28",
-        "-c:a", "aac", "-y", output_path
-    ]
+        return 'No file part', 400
     
-    subprocess.run(command)
+    file = request.files['file']
+    
+    if file.filename == '':
+        return 'No selected file', 400
 
-    return send_file(output_path, as_attachment=True)
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
+
+        # Add your video processing logic here using FFmpeg
+        # For now, it's just a placeholder.
+        print(f"File saved at {file_path}")
+        
+        # You can run FFmpeg commands to process the file here.
+        
+        return jsonify({'message': 'File uploaded and processed successfully!'}), 200
+    else:
+        return 'Invalid file type. Please upload an MP4 file.', 400
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Ensure that the upload folder exists
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER)
+
+    # Run Flask app
+    app.run(debug=True)
