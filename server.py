@@ -1,5 +1,8 @@
+import os
+import subprocess
+import time
 from flask import Flask, request, jsonify
-from flask_cors import CORS  # Import CORS
+from flask_cors import CORS
 
 app = Flask(__name__)
 
@@ -17,16 +20,27 @@ def upload_video():
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
 
-    # Save the uploaded file
-    video_path = os.path.join("uploads", file.filename)
-    file.save(video_path)
+    # Ensure the uploads directory exists
+    if not os.path.exists("uploads"):
+        os.makedirs("uploads")
 
-    # Now you can process the video file (using FFmpeg or any other logic you have)
-    output_file = "output_" + file.filename
+    # Save the uploaded file
+    input_file = os.path.join("uploads", file.filename)
+    file.save(input_file)
+
+    # Set the output file name
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    output_file = os.path.join("uploads", f"output_{timestamp}.mp4")
+
+    # FFmpeg command to process the video
     ffmpeg_command = [
-        'ffmpeg', '-i', video_path, output_file
+        'ffmpeg', '-i', input_file, output_file
     ]
-    subprocess.run(ffmpeg_command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+
+    try:
+        subprocess.run(ffmpeg_command, stderr=subprocess.PIPE, stdout=subprocess.PIPE, check=True)
+    except subprocess.CalledProcessError as e:
+        return jsonify({'error': 'FFmpeg processing failed', 'details': e.stderr.decode()}), 500
 
     return jsonify({'message': 'File processed successfully', 'output': output_file})
 
